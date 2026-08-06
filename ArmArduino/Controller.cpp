@@ -7,27 +7,38 @@
 
 
 #define M_PI 3.14159265358979323846
-#define step1 31
-#define dir1 33
+#define step1 35
+#define dir1 37
 #define step2 22
 #define dir2 24
-#define step3 48
-#define dir3 46
-#define step4B 36
-#define dir4B 34
-#define step5C 49
-#define dir5C 51
+#define step3 30
+#define dir3 28
+#define step4B 45
+#define dir4B 47
+#define step5C 50 
+#define dir5C 52
+
+const int ENA_PIN = 44; // PWM-capable pin on Mega
+const int IN1_PIN = 40;
+const int IN2_PIN = 42;
 
                         //tune this number
 #define L0 287.87      //length between motor 1 and 2
 #define L1 260.97      //length between motor 2 and 3
 #define L2 260.75      //length between motor 3 and 5
 
-
+int16_t RxCoords[2];
 Hand gripper;
 float inputCoords[2];
 int states;
+int cnt;
 Motor motors[5];
+int timeIntervals[5];
+unsigned long lastStepTime[5];
+int minInterval;
+int cupIdx;
+unsigned long now;
+Coordinate cupPosList[6];
 
 void setup() {
   pinMode(step1, OUTPUT);
@@ -41,91 +52,127 @@ void setup() {
   pinMode(dir4B, OUTPUT);
   pinMode(dir5C, OUTPUT);
 
+  // pinMode(ENA_PIN, OUTPUT);
+  // pinMode(IN1_PIN, OUTPUT);
+  // pinMode(IN2_PIN, OUTPUT);
+  // digitalWrite(ENA_PIN, HIGH);
+
   digitalWrite(dir1, HIGH);
-  digitalWrite(dir2, HIGH);
+  digitalWrite(dir2, LOW);
   digitalWrite(dir3, HIGH);
-  digitalWrite(dir4B, HIGH);
-  digitalWrite(dir5C, HIGH);
+  digitalWrite(dir4B, LOW);
+  digitalWrite(dir5C, HIGH); 
   digitalWrite(step1, LOW);
   digitalWrite(step2, LOW);
   digitalWrite(step3, LOW);
   digitalWrite(step4B, LOW);
   digitalWrite(step5C, LOW);
-
-
-
-
   
   states = 0;
+  cupIdx = 0;
  
   motors[0] = Motor(step1, dir1, 1, 0);
-  motors[1] = Motor(step2, dir2, 1, 1);
-  motors[2] = Motor(step3, dir3, 1, 2);
-  motors[3] = Motor(step4B, dir4B, 1, 3);
-  motors[4] = Motor(step5C, dir5C, 1, 4);
+  motors[1] = Motor(step2, dir2, 0, 1);
+  motors[2] = Motor(step3, dir3, 1, 2); 
+  motors[3] = Motor(step4B, dir4B, 0, 3); 
+  motors[4] = Motor(step5C, dir5C, 1, 4); 
 
   Serial.begin(9600);
+  Serial1.begin(9600);
+
+
+  minInterval = 400;
+  for (int i=0; i<5; i++){
+    timeIntervals[i] = minInterval;
+    lastStepTime[i] = 0;
+  }
    // set the start coordinate
 
-  // Coordinate startPos;
-  // Hand gripper(InverseKine(startPos)); 
-  // Coordinate target(300, 300, 100);
-  // MotorPosition x = InverseKine(target);   
-  delayMicroseconds(3000);
+  Coordinate startPos(0,420, 355);
+  gripper = Hand(InverseKine(startPos)); 
+
+  delay(2000);
+
 }
 
-void loop() { // this is the loop for bottle pouring
+void loop() {
+  
+  // digitalWrite(dir, LOW);
+  // digitalWrite(step4B, HIGH);
+  // digitalWrite(step5C, HIGH);
+  // delayMicroseconds(600);
+  // digitalWrite(step4B, LOW);
+  // digitalWrite(step5C, LOW);
+  // delayMicroseconds(600);
 
-    digitalWrite(step2, HIGH);
-    delayMicroseconds(800);
-    digitalWrite(step2, LOW);
-    delayMicroseconds(800);
+  // Coordinate target(0, 420,200);
+  // int x = moveTo(target);
+  // if (x == 1){
+  //   Serial.println(x);
+  // }
 
   if (states == 0){
-    // Serial.readBytes((byte*)inputCoords, sizeof(inputrCoords));
+    if (readData()){
+      Coordinate bottlePos(RxCoords[0], RxCoords[1], 100);
+
+      if (moveTo(bottlePos)) {
+        
+        delay(500);
+        states++;
+        //grab the bottle
+      }
+    }
+  }
   
+  // else if (states == 1){
+  //   if (readData()){
+  //     Coordinate pourPos(RxCoords[0], RxCoords[1], 400);
+  //     if (moveTo(pourPos)) {
+  //       delay(500);
+  //       states++;
+  //       //move to pour position
+  //     }
+  //   }
+  // }
 
-    // Coordinate target(inputCoords[0], inputCoords[1], 50); // input coordinates from rasberry pi
+  // else if (states == 2){
+  //   //pour drink
+  //   states++;
+  // }
+  
+  // else if (state == 3){
+  //   //place the bottle down and release the cup
+  // }
+}
 
-    // moveTo(gripper, target); 
-
+// void loop2(){ // this is the loop for cup stacking
+//   if (states == 0){ // move to grab position
+//     if (readData()){
+//       Coordinate grabPos(RxCoords[0], RxCoords[1], 400);
+//       if (moveTo(grabPos)) {
+//         delay(500);
+//         states++;
+//         //grab
+//       }
+//     }
+//   }
+//   else if (states == 1){
     
-  }
-  
-  else if (states == 1){
-    // Serial.readBytes((byte*)inputCoords, sizeof(inputrCoords));
-  
+//     if (moveTo(cupPosList[cupIdx])){
+//       delay(500);
+//       cupIdx++;
+//       states--;
+//       if (cupIdx == 6){
+//         states = 2;
+//       }
+//       //drop;
+//     }
+//   }
+//   else if (states == 2){
+//     //finish cup stacking
+//   }
+ 
 
-    // Coordinate target(inputCoords[0]+100, inputCoords[1], 100); // input coordinates from rasberry pi
-
-    // moveTo(gripper, target);
-  }
-
-  else if (states == 2){
-    //rotate hands
-  }
-
-
-
-}
-
-void loop2(){ // this is the loop for cup stacking
-  if (states == 0){
-    // Serial.readBytes((byte*)inputCoords, sizeof(inputrCoords));
-  
-
-    // Coordinate target(inputCoords[0], inputCoords[1], 60); // input coordinates from rasberry pi
-
-    // moveTo(gripper, target);
-  }
-  else if (states == 1){
-    //move to the cup placement
-  }
-  else{
-    //drop cut
-    //after some time, reset states to 0
-  }
-}
 
 
 MotorPosition InverseKine(Coordinate objUnfiltered) { // treat the forward axis as y, left right as x. Angle 0 is the Y AXIS not the x axis. To the right of the Y-axis is positive angle, left is negative 
@@ -143,89 +190,53 @@ MotorPosition InverseKine(Coordinate objUnfiltered) { // treat the forward axis 
   float theta2 = 180/M_PI * (acos((pow(L1,2)+pow(L2,2)-pow(distance,2))/(2*L1*L1)));
 
   float theta3 = theta1+theta2 -90;
-  
-  Serial.println(objTheta);
-  Serial.println(theta1);
-  Serial.println(theta2);
-  Serial.println(theta3);
 
-  float targetList[]= {objTheta*13.5/1.8, theta1*150/1.8, theta2*150/1.8, theta3*67.82/1.8, theta3*67.82/1.8, 180};
+
+  
+  long targetList[]= {(long)(objTheta*13.5/0.225), (long)(theta1*150/0.225), (long)(theta2*150/0.225), (long)(theta3*67.82/0.225), (long) (theta3*67.82/0.225)};
+  // Serial.println((int)theta1*150/1.8);
+  // Serial.println((int)theta2*150/1.8);
+  // Serial.println((int)theta3*67.82/1.8);
+  // Serial.println();
   MotorPosition targetPos(targetList);//change so that last angle makes wrist flat
   return targetPos;
-
 }
 
-// void Reset(Hand h){ //reset the hand, and resets its coord and motor-position
 
-// }
-
-
-
-// void moveToLoop(Coordinate target, Hand gripper){
-//   MotorPosition targetPositions = InverseKine(target);
-//   int limit1 = abs(targetPositions.coordState[0]- gripper.motorPos.coordState[0]);
-//   int limit2 = abs(targetPositions.coordState[1]- gripper.motorPos.coordState[1]);
-//   int limit3 = abs(targetPositions.coordState[2]- gripper.motorPos.coordState[2]);
-//   int limit4 = abs(targetPositions.coordState[3]- gripper.motorPos.coordState[3]);
-//   int limit5 = abs(targetPositions.coordState[4]- gripper.motorPos.coordState[4]);
-
-//   for (int i = 0; i < max(limit1, max(limit2, max(limit3, limit4))); i++){
-//     if (i<limit1){
-//       set motor high
-//     }
-//      if (i<limit2){
-//       set motor high
-//     }
-//      if (i<limit3){
-//       set motor high
-//     }
-//      if (i<limit4){
-//       set motor high
-//     }
-//     delay(200);
-//     if (i<limit1){
-//       set motor low
-//       update motor
-//     }
-//      if (i<limit2){
-//       set motor low
-//       update motor
-//     }
-//      if (i<limit3){
-//       set motor low
-//       update motor
-//     }
-//      if (i<limit4){
-//       set motor low
-//       update motor
-//     }
-//     delay(200)
-//   }
-// }
-
-void moveTo(Hand gripper, Coordinate target){
+int moveTo(Coordinate target){
+  now = micros();
+  int targetReached = 0;
+  int cnt = 0;
   MotorPosition targetPosition = InverseKine(target);
-
   for (Motor m : motors){
-    if (abs(gripper.motorPos.coordState[m.idx] - targetPosition.coordState[m.idx])>5){
+    if ((abs(gripper.motorPos.coordState[m.idx] - targetPosition.coordState[m.idx])>3) && ((now - lastStepTime[m.idx]) > timeIntervals[m.idx])){
       setDirection(m, targetPosition.coordState[m.idx] - gripper.motorPos.coordState[m.idx]);
       move1(m);
+      delayMicroseconds(5);
+      stop1(m, targetPosition.coordState[m.idx] - gripper.motorPos.coordState[m.idx]);
+      lastStepTime[m.idx] = now;
+      long timeInteval = 1000 - 50L*abs((int)(targetPosition.coordState[m.idx] - gripper.motorPos.coordState[m.idx]));
+      
+      if (timeInteval < minInterval){
+        timeInteval = minInterval;
+      }
+      
+      timeIntervals[m.idx] = timeInteval;
+    }
+    else if (abs(gripper.motorPos.coordState[m.idx] - targetPosition.coordState[m.idx])<=5){
+      cnt++;
+      if (cnt == 5) targetReached = 1;
     }
   }
-  delay(400);
-  for (Motor m: motors){
-    if (abs(gripper.motorPos.coordState[m.idx] - targetPosition.coordState[m.idx])>5){
-      stop1(gripper, m, targetPosition.coordState[m.idx] - gripper.motorPos.coordState[m.idx]);
-    }
-  }
-  delay(400);
+  return targetReached;  
 }
 
 void move1(Motor m){
+   //Serial.println(m.stepPin);
    digitalWrite(m.stepPin, HIGH);
 }
 
-void stop1(Hand gripper, Motor m, int direction){
+void stop1(Motor m, int direction){
   digitalWrite(m.stepPin, LOW);
   if (direction>0){
     gripper.motorPos.coordState[m.idx]++;
@@ -233,20 +244,49 @@ void stop1(Hand gripper, Motor m, int direction){
   else if (direction<0){
     gripper.motorPos.coordState[m.idx]--;
   }
-  
 }
 
+int readData(){
+  if (Serial1.available() >= 5) {       // wait for full frame
+    if (Serial1.read() == 0xFF) {       // check start marker
+      byte b0 = Serial1.read();
+      byte b1 = Serial1.read();
+      byte b2 = Serial1.read();
+      byte b3 = Serial1.read();
+
+      RxCoords[0] = (b0 << 8) | b1;
+      RxCoords[1] = (b2 << 8) | b3;
+      RxCoords[1] += 250;
+      return 1;
+    }
+    else{
+      return 0;
+    }
+  }
+  else {
+    return 0;
+  }
+}
 
 void setDirection(Motor m, int direction){
   if (direction > 0){
-    digitalWrite(m.dirPin, m.defaultDirection);
+    //Serial.println("positive direction");
+    if (m.defaultDirection == 1){
+      digitalWrite(m.dirPin, HIGH);
+      
+    }
+    else{
+      digitalWrite(m.dirPin, LOW);
+    }
+    
   }
   else{
-    digitalWrite(m.dirPin, !m.defaultDirection);
+    //Serial.println("positive direction");
+    if (m.defaultDirection == 1){
+      digitalWrite(m.dirPin, LOW);
+    }
+    else{
+      digitalWrite(m.dirPin, HIGH);
+    }
   }
 }
-
-
-
-
-
